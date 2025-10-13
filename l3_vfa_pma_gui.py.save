@@ -1,0 +1,350 @@
+"""
+Basit GUI (Tkinter) – DICOM zorunlu, PNG opsiyonel (destekleyici)
+Çıktı: VFA, PMA, PMI, VFA/PMA + overlay penceresi
+"""
+   
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
+from pathlib import Path
+import cv2
+
+import l3_vfa_pma_core_v3_7 as core
+
+APP_TITLE = "L3 Analyzer – v3.7 (DICOM + PNG Assist)"
+
+class App(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title(APP_TITLE)# -*- coding: utf-8 -*-
+"""
+Basit GUI (Tkinter) – DICOM zorunlu, PNG opsiyonel (destekleyici)
+Çıktı: VFA, PMA, PMI, VFA/PMA + overlay penceresi
+"""
+
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
+from pathlib import Path
+import cv2
+
+import l3_vfa_pma_core_v3_7 as core
+
+APP_TITLE = "L3 Analyzer – v3.7 (DICOM + PNG Assist)"
+
+class App(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title(APP_TITLE)
+        self.geometry("820x560")
+        self.resizable(False, False)
+
+        # settings.json varsa yükle
+        core.load_settings(Path(__file__).parent)
+
+        frm = ttk.Frame(self, padding=10)
+        frm.pack(fill="x")
+        row = 0
+
+        # --- DICOM seçimi
+        ttk.Label(frm, text="DICOM (.dcm):").grid(row=row, column=0, sticky="w")
+        self.dcm_var = tk.StringVar(value="")
+        ttk.Entry(frm, textvariable=self.dcm_var, width=72).grid(row=row, column=1, padx=6, pady=4, sticky="w")
+        ttk.Button(frm, text="Seç...", command=self.pick_dcm).grid(row=row, column=2, padx=4)
+        ttk.Button(frm, text="DICOM yolunu yapıştır", command=self.paste_dcm).grid(row=row, column=3, padx=4)
+        row += 1
+
+        # --- PNG seçimi (opsiyonel)
+        ttk.Label(frm, text="PNG (aynı kesit – opsiyonel):").grid(row=row, column=0, sticky="w")
+        self.png_var = tk.StringVar(value="")
+        ttk.Entry(frm, textvariable=self.png_var, width=72).grid(row=row, column=1, padx=6, pady=4, sticky="w")
+        ttk.Button(frm, text="Seç...", command=self.pick_png).grid(row=row, column=2, padx=4)
+        ttk.Button(frm, text="PNG yolunu yapıştır", command=self.paste_png).grid(row=row, column=3, padx=4)
+        row += 1
+
+        # --- Cinsiyet
+        ttk.Label(frm, text="Cinsiyet:").grid(row=row, column=0, sticky="w")
+        self.sex_var = tk.StringVar(value="M")
+        ttk.Combobox(frm, textvariable=self.sex_var, values=["M", "F"], state="readonly", width=6).grid(row=row, column=1, sticky="w")
+        row += 1
+
+        # --- Boy
+        ttk.Label(frm, text="Boy (cm):").grid(row=row, column=0, sticky="w")
+        self.h_var = tk.StringVar(value="170")
+        ttk.Entry(frm, textvariable=self.h_var, width=12).grid(row=row, column=1, sticky="w")
+        row += 1
+
+        # --- Analiz butonu
+        ttk.Button(frm, text="Analiz Et", command=self.run).grid(row=row, column=1, sticky="w", pady=(6, 4))
+        row += 1
+
+        ttk.Label(self, text="Sonuçlar:").pack(anchor="w", padx=10)
+        self.txt = tk.Text(self, height=16, wrap="word")
+        self.txt.pack(fill="both", expand=True, padx=10, pady=(4, 8))
+
+    # -----------------------------
+    # Dosya seçiciler (ön plana zorlama + parent=self)
+    # -----------------------------
+    def pick_dcm(self):
+        try:
+            self.lift()
+            self.attributes('-topmost', True)
+            self.after(200, lambda: self.attributes('-topmost', False))
+
+            f = filedialog.askopenfilename(
+                parent=self,
+                title="DICOM seç",
+                initialdir=str(Path.home() / "Desktop"),
+                filetypes=[("DICOM", "*.dcm"), ("Tümü", "*.*")]
+            )
+            if f:
+                self.dcm_var.set(f)
+        except Exception as e:
+            messagebox.showerror("Hata", f"DICOM seçilemedi: {e}")
+
+    def pick_png(self):
+        try:
+            self.lift()
+            self.attributes('-topmost', True)
+            self.after(200, lambda: self.attributes('-topmost', False))
+
+            f = filedialog.askopenfilename(
+                parent=self,
+                title="PNG seç (aynı kesit – opsiyonel)",
+                initialdir=str(Path.home() / "Desktop"),
+                filetypes=[("PNG", "*.png"), ("Tümü", "*.*")]
+            )
+            if f:
+                self.png_var.set(f)
+        except Exception as e:
+            messagebox.showerror("Hata", f"PNG seçilemedi: {e}")
+
+    # -----------------------------
+    # Panodan yol yapıştırma yardımcıları
+    # -----------------------------
+    def paste_dcm(self):
+        try:
+            y = self.clipboard_get()
+            p = Path(y.strip().strip('"'))
+            if p.exists() and p.suffix.lower() == ".dcm":
+                self.dcm_var.set(str(p))
+            else:
+                messagebox.showwarning("Uyarı", "Panodaki yol geçerli bir .dcm dosyası değil.")
+        except Exception:
+            messagebox.showwarning("Uyarı", "Panoda kullanılabilir bir metin yok.")
+
+    def paste_png(self):
+        try:
+            y = self.clipboard_get()
+            p = Path(y.strip().strip('"'))
+            if p.exists() and p.suffix.lower() == ".png":
+                self.png_var.set(str(p))
+            else:
+                messagebox.showwarning("Uyarı", "Panodaki yol geçerli bir .png dosyası değil.")
+        except Exception:
+            messagebox.showwarning("Uyarı", "Panoda kullanılabilir bir metin yok.")
+
+    # -----------------------------
+    # Analiz çalıştırma
+    # -----------------------------
+    def run(self):
+        try:
+            dcm = Path(self.dcm_var.get().strip())
+            if not dcm.exists():
+                messagebox.showerror("Hata", "Geçerli bir DICOM seçin.")
+                return
+
+            sex = self.sex_var.get().upper()
+            if sex not in ("M", "F"):
+                messagebox.showerror("Hata", "Cinsiyet M/F olmalı.")
+                return
+
+            try:
+                h_cm = float(self.h_var.get().replace(",", "."))
+            except Exception:
+                messagebox.showerror("Hata", "Boy (cm) sayısal olmalı.")
+                return
+
+            if h_cm <= 0:
+                messagebox.showerror("Hata", "Boy pozitif olmalı.")
+                return
+
+            png_path = Path(self.png_var.get().strip()) if self.png_var.get().strip() else None
+
+            res, overlay = core.run_case(dcm, h_cm, sex, png_path=png_path)
+            self.show_res(res)
+
+            if overlay is not None:
+                vis = cv2.resize(overlay, (int(overlay.shape[1] * 0.9), int(overlay.shape[0] * 0.9)))
+                cv2.imshow(f"{res.case_id} overlay", vis)
+                cv2.waitKey(1)
+
+        except Exception as e:
+            messagebox.showerror("Hata", f"İşleme hatası: {e}")
+
+    # -----------------------------
+    # Sonuç yazdırma
+    # -----------------------------
+    def show_res(self, res: core.Metrics):
+        self.txt.delete("1.0", "end")
+        ratio_str = "NA" if (res.ratio_VFA_PMA is None) else f"{res.ratio_VFA_PMA:.2f}"
+        pmi_str = "NA" if (res.PMI_cm2_per_m2 is None) else f"{res.PMI_cm2_per_m2:.2f}"
+        vfa_key = f"VFA≥{core.CFG['VFA_OBESITY_CUTOFF_CM2']:.0f}cm²"
+
+        lines = [
+            "=== RESULT @ v3.7 ===",
+            f"ID: {res.case_id} | Sex: {res.sex} | Height(m): {res.height_m:.2f}",
+            f"PMA: {res.PMA_mm2:.1f} mm²   VFA: {res.VFA_mm2:.1f} mm² ({res.VFA_mm2/100.0:.1f} cm²)",
+            f"VFA/PMA: {ratio_str}   PMI: {pmi_str} cm²/m²",
+            f"Sarcopenia(PMI<cutoff): {res.sarcopenia_pmi}  {vfa_key}: {res.vfa_high}  SO: {res.so_flag}",
+        ]
+        self.txt.insert("end", "\n".join(lines) + "\n")
+
+
+if __name__ == "__main__":
+    App().mainloop()
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
+from pathlib import Path
+import cv2
+
+import l3_vfa_pma_core_v3_7 as core
+
+APP_TITLE = "L3 Analyzer – v3.7 (DICOM + PNG Assist)"
+
+class App(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title(APP_TITLE)
+        self.geometry("820x560")
+        self.resizable(False, False)
+
+        core.load_settings(Path(__file__).parent)
+
+        frm = ttk.Frame(self, padding=10); frm.pack(fill="x")
+        row = 0
+
+        ttk.Label(frm, text="DICOM (.dcm):").grid(row=row, column=0, sticky="w")
+        self.dcm_var = tk.StringVar(value="")
+        ttk.Entry(frm, textvariable=self.dcm_var, width=72).grid(row=row, column=1, padx=6, pady=4, sticky="w")
+        ttk.Button(frm, text="Seç...", command=self.pick_dcm).grid(row=row, column=2); row+=1
+
+        ttk.Label(frm, text="PNG (aynı kesit – opsiyonel):").grid(row=row, column=0, sticky="w")
+        self.png_var = tk.StringVar(value="")
+        ttk.Entry(frm, textvariable=self.png_var, width=72).grid(row=row, column=1, padx=6, pady=4, sticky="w")
+        ttk.Button(frm, text="Seç...", command=self.pick_png).grid(row=row, column=2); row+=1
+
+        ttk.Label(frm, text="Cinsiyet:").grid(row=row, column=0, sticky="w")
+        self.sex_var = tk.StringVar(value="M")
+        ttk.Combobox(frm, textvariable=self.sex_var, values=["M","F"], state="readonly", width=6).grid(row=row, column=1, sticky="w"); row+=1
+
+        ttk.Label(frm, text="Boy (cm):").grid(row=row, column=0, sticky="w")
+        self.h_var = tk.StringVar(value="170")
+        ttk.Entry(frm, textvariable=self.h_var, width=12).grid(row=row, column=1, sticky="w"); row+=1
+
+        ttk.Button(frm, text="Analiz Et", command=self.run).grid(row=row, column=1, sticky="w", pady=(6,4)); row+=1
+
+        ttk.Label(self, text="Sonuçlar:").pack(anchor="w", padx=10)
+        self.txt = tk.Text(self, height=16, wrap="word")
+        self.txt.pack(fill="both", expand=True, padx=10, pady=(4,8))
+
+        def pick_dcm(self):
+           def pick_dcm(self):
+    try:
+        # pencereyi üste getir
+        self.lift()
+        self.attributes('-topmost', True)
+        self.after(200, lambda: self.attributes('-topmost', False))
+
+        f = filedialog.askopenfilename(
+            parent=self,
+            title="DICOM seç",
+            initialdir=str(Path.home() / "Desktop"),
+            filetypes=[("DICOM", "*.dcm"), ("Tümü", "*.*")]
+        )
+        if f:
+            self.dcm_var.set(f)
+    except Exception as e:
+        messagebox.showerror("Hata", f"DICOM seçilemedi: {e}") try:
+            # pencereyi üste getir
+            self.lift()
+            self.attributes('-topmost', True)
+            self.after(200, lambda: self.attributes('-topmost', False))
+
+            f = filedialog.askopenfilename(
+                parent=self,
+                title="DICOM seç",
+                initialdir=str(Path.home() / "Desktop"),
+                filetypes=[("DICOM", "*.dcm"), ("Tümü", "*.*")]
+            )
+            if f:
+                self.dcm_var.set(f)
+        except Exception as e:
+            messagebox.showerror("Hata", f"DICOM seçilemedi: {e}")
+
+    def pick_png(self):
+        try:
+            # pencereyi üste getir
+            self.lift()
+            self.attributes('-topmost', True)
+            self.after(200, lambda: self.attributes('-topmost', False))
+
+            f = filedialog.askopenfilename(
+                parent=self,
+                title="PNG seç (aynı kesit – opsiyonel)",
+                initialdir=str(Path.home() / "Desktop"),
+                filetypes=[("PNG", "*.png"), ("Tümü", "*.*")]
+            )
+            if f:
+                self.png_var.set(f)
+        except Exception as e:
+            messagebox.showerror("Hata", f"PNG seçilemedi: {e}")def pick_dcm(self):
+        f = filedialog.askopenfilename(title="DICOM seç", filetypes=[("DICOM", "*.dcm"), ("Tümü", "*.*")])
+        if f: self.dcm_var.set(f)
+
+    def pick_png(self):
+        f = filedialog.askopenfilename(title="PNG seç", filetypes=[("PNG", "*.png"), ("Tümü", "*.*")])
+        if f: self.png_var.set(f)
+
+    def run(self):
+        try:
+            dcm = Path(self.dcm_var.get().strip())
+            if not dcm.exists():
+                messagebox.showerror("Hata", "Geçerli bir DICOM seçin."); return
+            sex = self.sex_var.get().upper()
+            if sex not in ("M","F"):
+                messagebox.showerror("Hata", "Cinsiyet M/F olmalı."); return
+            try:
+                h_cm = float(self.h_var.get().replace(",", "."))
+            except Exception:
+                messagebox.showerror("Hata", "Boy (cm) sayısal olmalı."); return
+            if h_cm <= 0:
+                messagebox.showerror("Hata", "Boy pozitif olmalı."); return
+
+            png = Path(self.png_var.get().strip()) if self.png_var.get().strip() else None
+
+            res, overlay = core.run_case(dcm, h_cm, sex, png_path=png)
+            self.show_res(res)
+
+            if overlay is not None:
+                vis = cv2.resize(overlay, (int(overlay.shape[1]*0.9), int(overlay.shape[0]*0.9)))
+                cv2.imshow(f"{res.case_id} overlay", vis); cv2.waitKey(1)
+
+        except Exception as e:
+            messagebox.showerror("Hata", f"İşleme hatası: {e}")
+
+    def show_res(self, res: core.Metrics):
+        self.txt.delete("1.0", "end")
+        ratio_str = "NA" if (res.ratio_VFA_PMA is None) else f"{res.ratio_VFA_PMA:.2f}"
+        pmi_str   = "NA" if (res.PMI_cm2_per_m2 is None) else f"{res.PMI_cm2_per_m2:.2f}"
+        vfa_key   = f"VFA≥{core.CFG['VFA_OBESITY_CUTOFF_CM2']:.0f}cm²"
+
+        lines = [
+            "=== RESULT @ v3.7 ===",
+            f"ID: {res.case_id} | Sex: {res.sex} | Height(m): {res.height_m:.2f}",
+            f"PMA: {res.PMA_mm2:.1f} mm²   VFA: {res.VFA_mm2:.1f} mm² ({res.VFA_mm2/100.0:.1f} cm²)",
+            f"VFA/PMA: {ratio_str}   PMI: {pmi_str} cm²/m²",
+            f"Sarcopenia(PMI<cutoff): {res.sarcopenia_pmi}  {vfa_key}: {res.vfa_high}  SO: {res.so_flag}",
+        ]
+        self.txt.insert("end", "\n".join(lines) + "\n")
+
+if __name__ == "__main__":
+    App().mainloop()

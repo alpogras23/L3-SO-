@@ -1,0 +1,47 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python Hata Ayıklayıcısı: Geçerli Dosya",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Run GUI (mini)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/l3_vfa_pma_gui.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "env": {
+        "PYTHONFAULTHANDLER": "1"
+      }
+    },
+    {
+      "name": "Run current file",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Quick Test (sample DICOM)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/quick_test.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "args": [
+        "${workspaceFolder}/334379490.dcm",
+        "M",
+        "1.70"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Format (black)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python -m black .",
+      "problemMatcher": []
+    },
+    {
+      "label": "Sort imports (isort)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python -m isort . --profile black",
+      "problemMatcher": []
+    },
+    {
+      "label": "Lint (pylint quick)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python -m pylint --errors-only *.py",
+      "problemMatcher": []
+    }
+  ]
+}

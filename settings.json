@@ -1,0 +1,64 @@
+{
+  "HU_FAT": [
+    -190,
+    -30
+  ],
+  "HU_MUSCLE_BASE": [
+    -29,
+    150
+  ],
+  "HU_MUSCLE_FALLBACK": [
+    -60,
+    200
+  ],
+  "HU_BONE_SEED": [
+    300,
+    3000
+  ],
+  "HU_BONE_CAND": [
+    150,
+    2000
+  ],
+  "HU_BONE_EXCLUDE": [
+    200,
+    4000
+  ],
+  "PMI_CUTOFF": {
+    "M": 6.0,
+    "F": 3.9
+  },
+  "VFA_PSOAS_RATIO_CUTOFF": 2.0,
+  "VFA_OBESITY_CUTOFF_CM2": 101,
+  "RING_INNER_MM_BASE": 6.0,
+  "RING_OUTER_MM_BASE": 20.0,
+  "VERTEBRA_BUFFER_MM_BASE": 3.0,
+  "MIN_PSOAS_AREA_MM2_BASE": 100.0,
+  "MAX_PSOAS_AREA_MM2_BASE": 8000.0,
+  "PNG_BAND_MM_BASE": 25,
+  "HEIGHT_BAND_MM_BASE": 80,
+  "GRAD_STRENGTH_BASE": 0.85,
+  "FASCIA_EDGE_Q": 0.9,
+  "FASCIA_MAX_GAP_MM": 6.0,
+  "PSOAS_SHAPE_MIN_ECC": 0.6,
+  "PSOAS_SHAPE_MIN_CONVEXITY": 0.8,
+  "PSOAS_AXIS_MAX_DEG": 30.0,
+  "PSOAS_SHAPE_WT": 1.0,
+  "RAY_COUNT": 360,
+  "RAY_MIN_HITS_RATIO": 0.8,
+  "RAY_MAX_GAP_MM": 8.0,
+  "RAY_SEARCH_MM": [
+    5.0,
+    80.0
+  ],
+  "RAY_LOCAL_REPAIR_MM": 6.0,
+  "SANITY_VFA_SCALE": 1.05,
+  "SANITY_PMA_SCALE": 1.05
+  ,
+  "VFA_HU": [-150, -50],
+  "MUSCLE_HU": [-29, 150],
+  "GAMMA": 1.0,
+  "BILAT_KERNEL": 5,
+  "MORPH_OPEN": 3,
+  "MORPH_CLOSE": 5,
+  "FUSE_L3_NEIGHBORS": true
+}
