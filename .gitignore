@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual envs
+.venv/
+venv/
+
+# Editor/OS
+.DS_Store
+
+# Build and dist
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# App bundles and archives
+L3 Analyzer.app/
+_archive_all_copies/
+
+# Debug outputs
+DEBUG_OUT/
+_debug_out/
+_debug_out_FORCE/
+
+# Models and large artifacts (optional)
+*.onnx
+
+# Logs
+*.log
