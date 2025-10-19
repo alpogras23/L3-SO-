@@ -31,3 +31,6 @@ _debug_out_FORCE/
 
 # Logs
 *.log
+data/
+data_prepped/
+checkpoints/
