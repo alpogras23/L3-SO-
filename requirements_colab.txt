@@ -1,0 +1,16 @@
+torch>=2.0.0
+torchvision
+torchaudio
+monai>=1.2.0
+nibabel
+pydicom
+opencv-python-headless
+matplotlib
+seaborn
+tqdm
+pandas
+SimpleITK
+scipy
+scikit-image
+totalsegmentator
+ipywidgets
