@@ -1,4 +1,4 @@
-#!/Users/alperenogras/Desktop/L3_SO_ANALYSIS/.venv/bin/python3
+#!/Users/alperenogras/Desktop/L3_SO_ANALYSIS/.venv/bin/python3.11
 import sys
 from humanfriendly.cli import main
 if __name__ == '__main__':

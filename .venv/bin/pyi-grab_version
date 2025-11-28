@@ -1,4 +1,4 @@
-#!/Users/alperenogras/Desktop/L3_SO_ANALYSIS/.venv/bin/python
+#!/Users/alperenogras/Desktop/L3_SO_ANALYSIS/.venv/bin/python3.11
 import sys
 from PyInstaller.utils.cliutils.grab_version import run
 if __name__ == '__main__':
