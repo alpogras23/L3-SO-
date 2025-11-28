@@ -2,22 +2,77 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Format (black)",
+      "label": "Run GUI (External Terminal.app)",
       "type": "shell",
-      "command": "${workspaceFolder}/.venv/bin/python -m black .",
+      "command": "open -a Terminal tools/run_gui_external.command",
       "problemMatcher": []
     },
     {
-      "label": "Sort imports (isort)",
+      "label": "AMOS22 -> DICOM (Desktop)",
       "type": "shell",
-      "command": "${workspaceFolder}/.venv/bin/python -m isort . --profile black",
+      "command": "cd \"$HOME/Desktop/L3_SO_ANALYSIS\" && source .venv/bin/activate && python scripts/prepare_amos_dicom.py --amos-root ${input:amosRoot} --out-root ${input:dicomOut}",
       "problemMatcher": []
     },
     {
-      "label": "Lint (pylint quick)",
+      "label": "Run GUI + Log (External Terminal.app)",
       "type": "shell",
-      "command": "${workspaceFolder}/.venv/bin/python -m pylint --errors-only *.py",
+      "command": "open -a Terminal ~/Desktop/L3_SO_GUI_LOG.command",
       "problemMatcher": []
+    },
+    {
+      "label": "Run GUI (debugpy listen 5678)",
+      "type": "shell",
+      "command": "open -a Terminal tools/run_gui_debugpy.command",
+      "problemMatcher": []
+    },
+    {
+      "label": "Headless Eval (no GUI)",
+      "type": "shell",
+      "command": "cd \"$HOME/Desktop/L3_SO_ANALYSIS\" && source .venv/bin/activate && python tools/eval_one.py ${input:dcmPath} ${input:pngPath} ${input:heightMeters} ${input:sex}",
+      "problemMatcher": []
+    }
+  ]
+  ,
+  "inputs": [
+    {
+      "id": "amosRoot",
+      "description": "Desktop AMOS22 dizini (NIfTI)",
+      "type": "promptString",
+      "default": "${env:HOME}/Desktop/AMOS22"
+    },
+    {
+      "id": "dicomOut",
+      "description": "Çıktı DICOM kökü",
+      "type": "promptString",
+      "default": "data/amos_dicom"
+    },
+    {
+      "id": "dcmPath",
+      "description": "DICOM dosya yolu (boş bırakabilirsiniz, PNG kullanacaksanız)",
+      "type": "promptString",
+      "default": ""
+    },
+    {
+      "id": "pngPath",
+      "description": "PNG kesit yolu (boş bırakabilirsiniz, DICOM kullanacaksanız)",
+      "type": "promptString",
+      "default": ""
+    },
+    {
+      "id": "heightMeters",
+      "description": "Hasta boyu (metre)",
+      "type": "promptString",
+      "default": "1.70"
+    },
+    {
+      "id": "sex",
+      "description": "Cinsiyet",
+      "type": "pickString",
+      "options": [
+        "M",
+        "F"
+      ],
+      "default": "M"
     }
   ]
 }

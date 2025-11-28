@@ -223,7 +223,7 @@ def main():
 
     trainer = pl.Trainer(
         max_epochs=int(args.epochs),
-        accelerator="cpu",
+        accelerator="auto",
         deterministic=True,
         logger=logger,
         callbacks=[ckpt],
