@@ -1,0 +1,75 @@
+name: Azure ML Training Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      compute_target:
+        description: 'Azure ML Compute target name'
+        required: true
+        default: 'l3-gpu-compute'
+      epochs:
+        description: 'Number of training epochs'
+        required: true
+        default: '60'
+      preset:
+        description: 'Processing preset'
+        required: true
+        default: 'eval'
+        type: choice
+        options:
+          - fast
+          - full
+          - eval
+      use_ts:
+        description: 'Use TotalSegmentator'
+        required: true
+        default: true
+        type: boolean
+      use_c2c:
+        description: 'Use C2C teacher'
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  submit-azure-ml-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout kod
+        uses: actions/checkout@v4
+        with:
+          ref: psoas-improvement
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Azure ML CLI kurulumu
+        run: |
+          az extension add -n ml -y
+          az extension update -n ml
+
+      - name: Azure ML Job gönder
+        run: |
+          az ml job create \
+            --file .github/azure-ml/training-job.yml \
+            --workspace-name ${{ secrets.AZURE_ML_WORKSPACE }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --set \
+              compute=${{ github.event.inputs.compute_target }} \
+              environment_variables.EPOCHS=${{ github.event.inputs.epochs }} \
+              environment_variables.SITE_PRESET=${{ github.event.inputs.preset }} \
+              environment_variables.RUN_TS=${{ github.event.inputs.use_ts }} \
+              environment_variables.RUN_C2C=${{ github.event.inputs.use_c2c }} \
+            --stream
+
+      - name: Sonuçları artifact olarak kaydet
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: training-logs-${{ github.run_number }}
+          path: |
+            outputs/
+            qa_out/
+            ckpts/

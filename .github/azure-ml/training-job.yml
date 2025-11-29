@@ -1,0 +1,39 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+display_name: L3 VFA/PMA Training (TS+C2C, 60 epochs)
+description: AMOS22 -> DICOM -> Teachers -> L3 -> 60 epoch training
+
+code: .
+
+command: >
+  bash .github/azure-ml/run_training.sh
+
+environment:
+  image: mcr.microsoft.com/azureml/curated/acpt-pytorch-2.0-cuda11.7:latest
+  conda_file: .github/azure-ml/conda-env.yml
+
+compute: azureml:l3-gpu-compute
+
+environment_variables:
+  EPOCHS: "60"
+  SITE_PRESET: "eval"
+  RUN_TS: "true"
+  RUN_C2C: "false"
+  AMOS22_ROOT: "/mnt/data/amos22"
+  DICOM_OUT: "./outputs/dicom"
+  TEACHERS_OUT: "./outputs/teachers"
+  QA_OUT: "./qa_out"
+  CKPT_DIR: "./ckpts"
+
+inputs:
+  amos22_data:
+    type: uri_folder
+    path: azureml://datastores/workspaceblobstore/paths/amos22
+
+outputs:
+  trained_model:
+    type: uri_folder
+    path: azureml://datastores/workspaceblobstore/paths/l3_models/${{name}}
+  qa_results:
+    type: uri_folder
+    path: azureml://datastores/workspaceblobstore/paths/l3_qa/${{name}}
