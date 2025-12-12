@@ -100,7 +100,7 @@ def stage1_find_l3(ct_path: str, temp_dir: str) -> Optional[int]:
     try:
         # Use subprocess to call TotalSegmentator CLI (more reliable than Python API)
         cmd = [
-            sys.executable, "-m", "totalsegmentator",
+            "totalsegmentator",  # Use direct binary instead of 'python -m'
             "-i", str(ct_path),
             "-o", str(temp_dir),
             "-ta", "total",  # task="total" includes vertebrae
@@ -172,7 +172,7 @@ def stage2_segment_psoas(l3_slice_path: str, output_dir: str) -> bool:
     try:
         # Use subprocess to call TotalSegmentator CLI
         cmd = [
-            sys.executable, "-m", "totalsegmentator",
+            "totalsegmentator",  # Use direct binary instead of 'python -m'
             "-i", str(l3_slice_path),
             "-o", str(output_dir),
             "-ta", "abdominal_muscles"  # Includes psoas_major_left/right (labels 19-20)
