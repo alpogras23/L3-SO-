@@ -5,33 +5,26 @@ description: "Two-stage: Stage 1 (L3 detection, fast=True) + Stage 2 (psoas on s
 
 code: .
 
-command: >
-  echo "========== COMBINED PIPELINE: STEP 1 + STEP 2 ==========" &&
-  python -m pip install --upgrade pip > /dev/null 2>&1 &&
-  pip install -q --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt &&
-  # Ensure TotalSegmentator CLI exists (binary name: totalsegmentator)
-  pip install -q totalsegmentator==1.5.7 nnunetv2==1.1.0 &&
-  echo "" &&
-  echo "========== STEP 1: Two-Stage L3 Psoas Segmentation ==========" &&
-  echo "Stage 1: L3 detection (task=total, fast=True, LOW RAM)" &&
-  echo "Stage 2: Psoas on L3 slice only (task=abdominal_muscles, LOW RAM)" &&
-  python $(find . -name "step1_two_stage_l3_psoas.py" -type f | head -1) \
-    --input-data ${{inputs.amos_data}} \
-    --output-dir ./teacher_labels_generated \
-    --max-cases 5 &&
-  echo "✅ Step 1 completed: Teacher labels generated" &&
-  echo "" &&
-  ls -la ./teacher_labels_generated &&
-  echo "" &&
-  echo "========== STEP 2: U-Net Training (60 epochs) ==========" &&
-  echo "Training MONAI U-Net on generated teachers..." &&
-  python $(find . -name "step2_train_unet.py" -type f | head -1) \
-    --teacher-dir ./teacher_labels_generated \
-    --output-dir ${{outputs.trained_model}} \
-    --epochs 10 \
-    --batch-size 4 \
-    --img-size 256 \
-    --lr 0.001 &&
+command: |
+  set -e
+  echo "========== COMBINED PIPELINE: STEP 1 + STEP 2 =========="
+  python -m pip install --upgrade pip > /dev/null 2>&1
+  pip install -q --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
+  pip install -q TotalSegmentator nnunetv2
+  echo ""
+  echo "========== STEP 1: Two-Stage L3 Psoas Segmentation =========="
+  echo "Stage 1: L3 detection (task=total, fast=True, LOW RAM)"
+  echo "Stage 2: Psoas on L3 slice only (task=abdominal_muscles, LOW RAM)"
+  STEP1_SCRIPT=$(find . -name "step1_two_stage_l3_psoas.py" -type f | head -1)
+  python "$STEP1_SCRIPT" --input-data ${{inputs.amos_data}} --output-dir ./teacher_labels_generated --max-cases 5
+  echo "✅ Step 1 completed: Teacher labels generated"
+  echo ""
+  ls -la ./teacher_labels_generated
+  echo ""
+  echo "========== STEP 2: U-Net Training (10 epochs test) =========="
+  echo "Training MONAI U-Net on generated teachers..."
+  STEP2_SCRIPT=$(find . -name "step2_train_unet.py" -type f | head -1)
+  python "$STEP2_SCRIPT" --teacher-dir ./teacher_labels_generated --output-dir ${{outputs.trained_model}} --epochs 10 --batch-size 4 --img-size 256 --lr 0.001
   echo "✅✅✅ PIPELINE COMPLETED SUCCESSFULLY! ✅✅✅"
 
 environment:
