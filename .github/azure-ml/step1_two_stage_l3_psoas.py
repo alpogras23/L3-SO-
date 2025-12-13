@@ -84,6 +84,56 @@ def extract_single_slice(ct_path: str, slice_idx: int, output_path: str) -> bool
         return False
 
 
+def load_mask_slice(mask_path: Path, slice_idx: int) -> Optional[np.ndarray]:
+    """Load a 3D mask and return the requested slice (axis=0)."""
+    try:
+        mask_nib = nib.load(str(mask_path))
+        mask_data = mask_nib.get_fdata()
+        if mask_data.ndim == 4:
+            mask_data = mask_data[..., 0]
+        if slice_idx >= mask_data.shape[0]:
+            return None
+        return (mask_data[slice_idx, :, :] > 0).astype(np.uint8)
+    except Exception as e:
+        print(f"  ⚠️  Failed to load mask slice from {mask_path}: {e}")
+        return None
+
+
+def build_fat_mask(ts_dir: Path, slice_idx: int, hu_slice: np.ndarray) -> np.ndarray:
+    """
+    Try to get fat mask from TotalSegmentator output; fallback to HU thresholding.
+    Fat HU range: [-190, -30].
+    """
+    candidates = [
+        "torso_fat.nii.gz",
+        "visceral_fat.nii.gz",
+        "adipose_intra_abdominal.nii.gz",
+        "vat.nii.gz",
+    ]
+    for name in candidates:
+        for cand in ts_dir.rglob(name):
+            mask_slice = load_mask_slice(cand, slice_idx)
+            if mask_slice is not None and mask_slice.sum() > 0:
+                print(f"  ✅ FAT mask from TS: {cand.name} ({mask_slice.sum()} px)")
+                return mask_slice
+    # Fallback: HU threshold
+    fat_mask = ((hu_slice >= -190) & (hu_slice <= -30)).astype(np.uint8)
+    print(f"  ⚠️  FAT mask via HU threshold ({fat_mask.sum()} px)")
+    return fat_mask
+
+
+def build_muscle_mask(hu_slice: np.ndarray) -> np.ndarray:
+    """
+    Simple HU-based muscle mask.
+    Muscle HU range: [-29, 150]; also require body mask (HU>-300).
+    """
+    body = (hu_slice > -300)
+    muscle = (hu_slice >= -29) & (hu_slice <= 150)
+    mask = (body & muscle).astype(np.uint8)
+    print(f"  ✅ Muscle mask via HU range ({mask.sum()} px)")
+    return mask
+
+
 def stage1_find_l3(ct_path: str, temp_dir: str) -> Optional[int]:
     """
     STAGE 1: Find L3 slice using task="total" with fast=True (LOW RAM).
@@ -98,17 +148,24 @@ def stage1_find_l3(ct_path: str, temp_dir: str) -> Optional[int]:
     print("  🔍 STAGE 1: Finding L3 slice (task=total, fast=True)...")
     
     try:
-        # Use subprocess to call TotalSegmentator CLI (more reliable than Python API)
-        cmd = [
-            "totalsegmentator",  # Use direct binary instead of 'python -m'
-            "-i", str(ct_path),
-            "-o", str(temp_dir),
-            "-ta", "total",  # task="total" includes vertebrae
-            "--fast"         # CRITICAL: LOW RAM mode
-        ]
+        # Use Python API instead of subprocess (more reliable in AML container)
+        from totalsegmentator.python_api import totalsegmentator
         
-        print(f"  🚀 Command: {' '.join(cmd)}")
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        print(f"  🚀 Running TotalSegmentator Python API: task=total, fast=True")
+        print(f"     Input: {ct_path}")
+        print(f"     Output: {temp_dir}")
+        
+        totalsegmentator(
+            input=ct_path,
+            output=temp_dir,
+            task="total",
+            fast=True,
+            ml=True,
+            quiet=False
+        )
+        
+        # Check if successful (dummy result for API)
+        result = type('obj', (object,), {'returncode': 0, 'stderr': ''})()
         
         if result.returncode != 0:
             print(f"  ❌ TotalSegmentator failed: {result.stderr[:300]}")
@@ -170,22 +227,21 @@ def stage2_segment_psoas(l3_slice_path: str, output_dir: str) -> bool:
     print("  🎯 STAGE 2: Segmenting psoas on L3 slice (task=abdominal_muscles)...")
     
     try:
-        # Use subprocess to call TotalSegmentator CLI
-        cmd = [
-            "totalsegmentator",  # Use direct binary instead of 'python -m'
-            "-i", str(l3_slice_path),
-            "-o", str(output_dir),
-            "-ta", "abdominal_muscles"  # Includes psoas_major_left/right (labels 19-20)
-            # NOTE: fast=False is implicit (--fast not added)
-            # Single slice → LOW RAM even without --fast
-        ]
+        # Use Python API instead of subprocess (more reliable in AML container)
+        from totalsegmentator.python_api import totalsegmentator
         
-        print(f"  🚀 Command: {' '.join(cmd)}")
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        print(f"  🚀 Running TotalSegmentator Python API: task=abdominal_muscles")
+        print(f"     Input: {l3_slice_path}")
+        print(f"     Output: {output_dir}")
         
-        if result.returncode != 0:
-            print(f"  ❌ TotalSegmentator failed: {result.stderr[:300]}")
-            return False
+        totalsegmentator(
+            input=l3_slice_path,
+            output=output_dir,
+            task="abdominal_muscles",
+            fast=False,  # Required for abdominal_muscles
+            ml=True,
+            quiet=False
+        )
         
         # Check if psoas masks were generated
         psoas_left = Path(output_dir) / "psoas_major_left.nii.gz"
@@ -250,6 +306,36 @@ def process_case_two_stage(ct_path: str, case_id: str, output_dir: str) -> bool:
         if not stage2_segment_psoas(l3_slice_path, stage2_output):
             return False
         
+        # Load HU slice & spacing from saved single-slice NIfTI
+        l3_nib = nib.load(l3_slice_path)
+        l3_data = l3_nib.get_fdata()
+        if l3_data.ndim == 4:
+            l3_data = l3_data[..., 0]
+        hu_slice = l3_data[0, :, :]
+        zooms = l3_nib.header.get_zooms()
+        pixel_area = float(zooms[1] * zooms[2])
+        print(f"  📐 Pixel area: {pixel_area:.3f} mm²")
+        
+        # Load psoas masks (single slice)
+        psoas_left_path = Path(stage2_output) / "psoas_major_left.nii.gz"
+        psoas_right_path = Path(stage2_output) / "psoas_major_right.nii.gz"
+        psoas_left = load_mask_slice(psoas_left_path, 0) if psoas_left_path.exists() else None
+        psoas_right = load_mask_slice(psoas_right_path, 0) if psoas_right_path.exists() else None
+        if psoas_left is None or psoas_right is None:
+            print("  ⚠️  Psoas masks missing after Stage 2")
+            return False
+        
+        # Build fat & muscle masks
+        fat_mask = build_fat_mask(stage1_dir, l3_idx, hu_slice)
+        muscle_mask = build_muscle_mask(hu_slice)
+        
+        # Area computations (mm²)
+        pma_px = int((psoas_left + psoas_right).sum())
+        pma_mm2 = float(pma_px * pixel_area)
+        fat_mm2 = float(fat_mask.sum() * pixel_area)
+        muscle_mm2 = float(muscle_mask.sum() * pixel_area)
+        print(f"  📏 Areas → PMA: {pma_mm2:.1f} mm² | VFA: {fat_mm2:.1f} mm² | SMA: {muscle_mm2:.1f} mm²")
+        
         # Copy results to final output directory
         case_output = Path(output_dir) / case_id
         case_output.mkdir(parents=True, exist_ok=True)
@@ -258,11 +344,21 @@ def process_case_two_stage(ct_path: str, case_id: str, output_dir: str) -> bool:
         for psoas_file in Path(stage2_output).rglob("psoas_major_*.nii.gz"):
             shutil.copy(psoas_file, case_output / psoas_file.name)
             print(f"  ✅ Saved: {psoas_file.name}")
+
+        # Save additional masks as PNG for QA
+        cv2.imwrite(str(case_output / "hu_slice.png"), np.clip((hu_slice + 150) / 400 * 255, 0, 255).astype(np.uint8))
+        cv2.imwrite(str(case_output / "fat_mask.png"), (fat_mask * 255).astype(np.uint8))
+        cv2.imwrite(str(case_output / "muscle_mask.png"), (muscle_mask * 255).astype(np.uint8))
+        cv2.imwrite(str(case_output / "psoas_mask.png"), ((psoas_left + psoas_right) * 255).astype(np.uint8))
         
         # Save metadata
         metadata = {
             "case_id": case_id,
             "l3_slice_idx": int(l3_idx),
+            "pixel_area_mm2": pixel_area,
+            "PMA_mm2": pma_mm2,
+            "VFA_mm2": fat_mm2,
+            "SMA_mm2": muscle_mm2,
             "status": "success"
         }
         with open(case_output / "metadata.json", "w") as f:
