@@ -1,0 +1,45 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+display_name: L3 U-Net Training (60 epochs) - Local Teachers
+description: "Train MONAI U-Net on local teacher labels"
+
+code: .
+
+command: >
+  bash -c "
+  set -euo pipefail
+  echo '=== STEP 2: U-Net Training (60 epochs) ===' 
+  echo 'Step 1 (lokal): Generate teacher labels'
+  python .github/azure-ml/step1_real_teachers_all.py \
+    --input-data /mnt/amos22-data/imagesTr \
+    --output-dir ./teacher_labels_generated \
+    && echo '✅ Teachers generated'
+  
+  echo ''
+  echo 'Step 2: Train U-Net on generated teachers'
+  python .github/azure-ml/step2_train_unet.py \
+    --teacher-dir ./teacher_labels_generated \
+    --output-dir ${{outputs.trained_model}} \
+    --epochs 60 \
+    --batch-size 4 \
+    --img-size 256 \
+    --lr 0.001 \
+    && echo '✅ Training completed!'
+  "
+
+environment:
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest
+  conda_file: .github/azure-ml/conda_env.yml
+
+compute: azureml:l3-cpu-cluster
+
+environment_variables:
+  PYTHONPATH: /workspace
+  OMP_NUM_THREADS: "2"
+  PYTORCH_CUDA_ALLOC_CONF: max_split_size_mb:128
+
+outputs:
+  trained_model:
+    type: uri_folder
+    path: azureml://datastores/workspaceblobstore/paths/trained_models/${{name}}
+

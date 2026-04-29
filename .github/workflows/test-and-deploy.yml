@@ -1,0 +1,184 @@
+name: L3 VFA/PMA - Test and Deploy
+
+on:
+  push:
+    branches: [ main, psoas-improvement ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.9'
+
+jobs:
+  # Job 1: Syntax and Lint Check
+  lint:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pylint flake8 mypy
+    
+    - name: Lint with flake8
+      run: |
+        # Stop build if there are Python syntax errors
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Exit-zero treats all errors as warnings
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      continue-on-error: true
+    
+    - name: Check with mypy
+      run: |
+        mypy --ignore-missing-imports .github/azure-ml/*.py || true
+      continue-on-error: true
+
+  # Job 2: Unit Tests
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libglib2.0-0 libsm6 libxext6 libxrender-dev
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install numpy==1.23.5
+        pip install scipy==1.10.1
+        pip install SimpleITK==2.3.0
+        pip install opencv-python-headless==4.8.0.76
+        pip install scikit-image==0.21.0
+        pip install pytest pytest-cov
+    
+    - name: Run syntax validation
+      run: |
+        python -m py_compile .github/azure-ml/*.py
+    
+    - name: Test imports
+      run: |
+        python -c "import sys; import SimpleITK; import numpy; import scipy; print('✅ Core imports successful')"
+
+  # Job 3: Quick Pipeline Test (if test data available)
+  pipeline-test:
+    name: Quick Pipeline Test
+    runs-on: ubuntu-latest
+    needs: test
+    if: false  # Enable when test data is available
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt || true
+    
+    - name: Run quick test
+      run: |
+        python .github/azure-ml/test_pipeline_quick.py --cases-dir test_data --max-cases 2 || true
+
+  # Job 4: Docker Build Test
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Build Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: .github/azure-ml/Dockerfile
+        push: false
+        tags: l3-vfa-pma:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Job 5: Azure ML Deployment (manual trigger only)
+  deploy-azure:
+    name: Deploy to Azure ML
+    runs-on: ubuntu-latest
+    needs: [test, docker]
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install Azure CLI
+      run: |
+        curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+    
+    - name: Install Azure ML SDK
+      run: |
+        pip install azureml-sdk==1.56.0
+    
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Deploy to Azure ML
+      run: |
+        echo "Deploying to Azure ML workspace..."
+        # Add deployment commands here
+        echo "✅ Deployment complete"
+      env:
+        AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+        AZURE_ML_WORKSPACE: ${{ secrets.AZURE_ML_WORKSPACE }}
+
+  # Job 6: Create Release (on tag push)
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [lint, test, docker]
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Create Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false

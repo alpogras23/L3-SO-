@@ -1,0 +1,38 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+display_name: L3 U-Net Training (60 epochs) - KESIN FIXED
+description: "Train MONAI U-Net on teacher labels"
+
+code: .
+
+command: >
+  ls -la &&
+  echo "Checking file structure..." &&
+  find . -name "step2_train_unet.py" -type f &&
+  python -m pip install --upgrade pip > /dev/null 2>&1 &&
+  pip install -q --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt &&
+  echo "========== STEP 2: U-Net Training (60 epochs) ==========" &&
+  echo "Starting training on teacher_labels_dummy..." &&
+  python $(find . -name "step2_train_unet.py" -type f | head -1) \
+    --teacher-dir ./teacher_labels_dummy \
+    --output-dir ${{outputs.trained_model}} \
+    --epochs 60 \
+    --batch-size 4 \
+    --img-size 256 \
+    --lr 0.001 &&
+  echo "✅ TRAINING COMPLETED SUCCESSFULLY!"
+
+environment:
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest
+
+compute: azureml:l3-cpu-cluster
+
+environment_variables:
+  PYTHONPATH: /workspace
+  OMP_NUM_THREADS: "2"
+  PYTORCH_CUDA_ALLOC_CONF: max_split_size_mb:128
+
+outputs:
+  trained_model:
+    type: uri_folder
+    path: azureml://datastores/workspaceblobstore/paths/trained_models/${{name}}

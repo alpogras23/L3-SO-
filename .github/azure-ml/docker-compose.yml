@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  l3-vfa-pma:
+    build:
+      context: ../..
+      dockerfile: .github/azure-ml/Dockerfile
+    image: l3-vfa-pma:latest
+    container_name: l3-vfa-pma-dev
+    
+    # GPU support
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    
+    # Volumes
+    volumes:
+      - ../..:/workspace
+      - ./data:/data
+      - ./results:/results
+    
+    # Environment variables
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTHONPATH=/workspace
+      - OMP_NUM_THREADS=4
+    
+    # Working directory
+    working_dir: /workspace
+    
+    # Keep container running
+    stdin_open: true
+    tty: true
+    
+    # Command
+    command: /bin/bash
+
+  # Optional: Jupyter notebook service
+  jupyter:
+    build:
+      context: ../..
+      dockerfile: .github/azure-ml/Dockerfile
+    image: l3-vfa-pma:latest
+    container_name: l3-vfa-pma-jupyter
+    
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    
+    volumes:
+      - ../..:/workspace
+      - ./data:/data
+      - ./results:/results
+    
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTHONPATH=/workspace
+    
+    working_dir: /workspace
+    
+    ports:
+      - "8888:8888"
+    
+    command: >
+      bash -c "pip install jupyter &&
+               jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root
+               --NotebookApp.token='' --NotebookApp.password=''"
+
+# Networks (optional)
+networks:
+  default:
+    name: l3-vfa-pma-network

@@ -1,0 +1,11 @@
+{
+  "subscription_id": "d2d593d8-01af-4128-98e5-31ede386359f",
+  "resource_group": "l3-rg",
+  "workspace_name": "l3-vfa-pma-ws",
+  "workspace_location": "westeurope",
+  "storage_account": "l3storage001",
+  "storage_container": "amos22-data",
+  "storage_connection_string": "DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=l3storage001;AccountKey=<REDACTED_USE_ENV_AZURE_STORAGE_KEY>;BlobEndpoint=https://l3storage001.blob.core.windows.net/;FileEndpoint=https://l3storage001.file.core.windows.net/;QueueEndpoint=https://l3storage001.queue.core.windows.net/;TableEndpoint=https://l3storage001.table.core.windows.net/",
+  "compute_name": "l3-compute-01",
+  "created_at": "2025-12-05T23:26:03Z"
+}

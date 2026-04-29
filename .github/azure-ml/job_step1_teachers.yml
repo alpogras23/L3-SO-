@@ -1,0 +1,34 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+display_name: L3 Full Pipeline - Teacher Generation
+description: "Generate TotalSegmentator teacher labels from AMOS22 dataset"
+
+code: .
+
+inputs:
+  amos_data:
+    type: uri_folder
+    path: "azureml:amos22-imagesTr:5"
+
+command: >
+  python -m pip install --upgrade pip &&
+  pip install -q --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt &&
+  python step1_real_teachers_all.py 
+  --input-data ${{inputs.amos_data}}
+  --output-dir ${{outputs.teacher_labels}}
+
+environment:
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest
+
+compute: azureml:l3-train-cpu
+resources:
+  instance_type: Standard_D32s_v3
+  shm_size: 16g
+
+environment_variables:
+  PYTHONPATH: /workspace
+  OMP_NUM_THREADS: "4"
+
+outputs:
+  teacher_labels:
+    type: uri_folder

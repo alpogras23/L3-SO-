@@ -1,0 +1,34 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+display_name: L3 VFA/PMA Analysis - AMOS22
+description: "VFA and PMA analysis processing on AMOS22 dataset from Azure Storage"
+
+code: .
+
+command: >
+  echo "Installing dependencies..."
+  && pip install -q -r requirements.txt
+  && echo "Starting L3 VFA/PMA processing..."
+  && python run_l3_azure.py 
+     --input-data ${{inputs.amos22_data}} 
+     --output-dir ${{outputs.results}}
+  && echo "Processing completed!"
+
+environment:
+  image: mcr.microsoft.com/azureml/minimal-ubuntu20.04-py38-cpu-inference:latest
+
+compute: azureml:l3-cpu-cluster
+
+environment_variables:
+  PYTHONPATH: /workspace
+  OMP_NUM_THREADS: "4"
+
+inputs:
+  amos22_data:
+    type: uri_folder
+    path: azureml://datastores/amos22storage/paths/
+
+outputs:
+  results:
+    type: uri_folder
+    path: azureml://datastores/workspaceblobstore/paths/l3_results/${{name}}

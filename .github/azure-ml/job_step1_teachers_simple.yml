@@ -1,0 +1,22 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+display_name: L3 Simple Test - Check Data
+description: "Test job to check AMOS22 datastore access"
+
+code: .
+
+command: >
+  echo "Starting test..." &&
+  echo "Input path: ${{inputs.amos22_data}}" &&
+  ls -la ${{inputs.amos22_data}} &&
+  echo "Test complete"
+
+environment:
+  image: mcr.microsoft.com/azureml/openmmplab/pytorch-1.13.0-cuda11.6-cudnn8-runtime:latest
+
+compute: azureml:l3-cpu-cluster
+
+inputs:
+  amos22_data:
+    type: uri_folder
+    path: azureml://datastores/amos22storage/paths/

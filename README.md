@@ -18,6 +18,7 @@ Bu sistem, CT görüntülerinden **radyolog ölçümleriyle maksimum uyumlu** ot
 ### Öne Çıkan Özellikler
 
 - 🔬 **Multi-Teacher Yaklaşım:** TotalSegmentator + Comp2Comp teacher entegrasyonu
+- 🤖 **Comp2Comp Azure ML:** End-to-end spine, muscle, adipose tissue segmentation
 - 🎓 **CVAT Entegrasyonu:** Manuel radyolog maskelerini eğitimde kullanma
 - 🖥️ **VS Code ↔ Colab Pro:** Yerel geliştirme, GPU eğitimi bulutta
 - 📊 **QA Odaklı:** Her segmentasyon için overlay görselleştirme ve kalite metrikleri
@@ -171,6 +172,35 @@ python psoas_ml/tbcc_train_vfa_pma.py \
     --validate-against-gt \
     --out-dir /content/drive/MyDrive/L3_RESULTS/tbcc_60ep
 ```
+
+---
+
+### 6. Comp2Comp Azure ML Pipeline (En Doğru VFA/PMA)
+
+**Comp2Comp kullanarak end-to-end spine, muscle, adipose tissue segmentation:**
+
+```bash
+# Test job'u hazırla (AMOS verisi ile)
+python test_comp2comp_azure_job.py \
+    --amos-root /path/to/amos22 \
+    --max-cases 5
+
+# Azure ML job'u başlat
+python test_comp2comp_azure_job.py \
+    --amos-root /path/to/amos22 \
+    --max-cases 5 \
+    --submit-job
+
+# Job takibi
+# https://ml.azure.com/runs/[job-id]
+```
+
+**Comp2Comp Özellikleri:**
+- 🤖 **Stanford V0.0.2 Model:** En güncel muscle/adipose tissue segmentation
+- 🦴 **Spine Segmentation:** L3 vertebra otomatik tespiti
+- 🎯 **Fascia Estimation:** Vertebra ve tissue boundaries kullanarak
+- 📏 **HU Kalibrasyonu:** Muscle (-29 to +150 HU), VAT (-150 to -50 HU), SAT (-190 to -30 HU)
+- 📊 **Confidence Scoring:** Segmentasyon kalitesi değerlendirmesi
 
 ---
 

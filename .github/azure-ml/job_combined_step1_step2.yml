@@ -1,7 +1,7 @@
 $schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
 type: command
-display_name: TEST - Two-Stage L3 Psoas (5 cases, LOW RAM)
-description: "Two-stage: Stage 1 (L3 detection, fast=True) + Stage 2 (psoas on single slice)"
+display_name: PRODUCTION - Two-Stage L3 Psoas (240 cases, FULL)
+description: "Two-stage: Stage 1 (L3 detection, fast=True) + Stage 2 (psoas on single slice) - FULL PRODUCTION"
 
 code: .
 
@@ -16,7 +16,7 @@ command: |
   echo "Stage 1: L3 detection (task=total, fast=True, LOW RAM)"
   echo "Stage 2: Psoas on L3 slice only (task=abdominal_muscles, LOW RAM)"
   STEP1_SCRIPT=$(find . -name "step1_two_stage_l3_psoas.py" -type f | head -1)
-  python "$STEP1_SCRIPT" --input-data ${{inputs.amos_data}} --output-dir ./teacher_labels_generated --max-cases 5
+  python "$STEP1_SCRIPT" --input-data ${{inputs.amos_data}} --output-dir ./teacher_labels_generated
   echo "✅ Step 1 completed: Teacher labels generated"
   echo ""
   ls -la ./teacher_labels_generated
@@ -24,7 +24,7 @@ command: |
   echo "========== STEP 2: U-Net Training (10 epochs test) =========="
   echo "Training MONAI U-Net on generated teachers..."
   STEP2_SCRIPT=$(find . -name "step2_train_unet.py" -type f | head -1)
-  python "$STEP2_SCRIPT" --teacher-dir ./teacher_labels_generated --output-dir ${{outputs.trained_model}} --epochs 10 --batch-size 4 --img-size 256 --lr 0.001
+  python "$STEP2_SCRIPT" --teacher-dir ./teacher_labels_generated --output-dir ${{outputs.trained_model}} --epochs 60 --batch-size 8 --img-size 256 --lr 0.001
   echo "✅✅✅ PIPELINE COMPLETED SUCCESSFULLY! ✅✅✅"
 
 environment:

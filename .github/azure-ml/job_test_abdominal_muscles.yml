@@ -1,0 +1,51 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+display_name: TEST - Abdominal Muscles Task (10 cases, 10 epochs)
+description: "Quick test: Generate psoas teachers with abdominal_muscles task + Train U-Net"
+
+code: .
+
+command: >
+  echo "========== TEST PIPELINE: ABDOMINAL MUSCLES TASK ==========" &&
+  python -m pip install --upgrade pip > /dev/null 2>&1 &&
+  pip install -q --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt &&
+  echo "" &&
+  echo "========== STEP 1: Teacher Labels (abdominal_muscles task) ==========" &&
+  echo "Testing with 10 cases to verify psoas segmentation..." &&
+  python $(find . -name "step1_real_teachers_all.py" -type f | head -1) \
+    --input-data ${{inputs.amos_data}} \
+    --output-dir ./teacher_labels_generated \
+    --max-cases 10 &&
+  echo "" &&
+  echo "✅ Step 1 completed. Checking generated labels..." &&
+  ls -la ./teacher_labels_generated/ &&
+  find ./teacher_labels_generated -name "psoas_major_*.nii.gz" | head -5 &&
+  echo "" &&
+  echo "========== STEP 2: Quick U-Net Training (10 epochs) ==========" &&
+  python $(find . -name "step2_train_unet.py" -type f | head -1) \
+    --teacher-dir ./teacher_labels_generated \
+    --output-dir ${{outputs.trained_model}} \
+    --epochs 10 \
+    --batch-size 2 \
+    --img-size 256 \
+    --lr 0.001 &&
+  echo "✅✅✅ TEST PIPELINE COMPLETED! ✅✅✅"
+
+environment:
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest
+
+compute: azureml:l3-train-cpu
+
+environment_variables:
+  PYTHONPATH: /workspace
+  OMP_NUM_THREADS: "8"
+
+inputs:
+  amos_data:
+    type: uri_folder
+    path: azureml://datastores/amos22imagestr/paths/
+
+outputs:
+  trained_model:
+    type: uri_folder
+    path: azureml://datastores/workspaceblobstore/paths/test_models/${{name}}

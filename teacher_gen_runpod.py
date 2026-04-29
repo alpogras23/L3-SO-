@@ -21,7 +21,28 @@ def main():
     output_path = Path(args.output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     
-    files = sorted(input_path.glob("*.nii.gz"))
+    files = []
+    # AMOS22 structure: look for CT scans
+    # Check for standard AMOS naming (amos_XXXX.nii.gz) in imagesTr folder
+    images_tr = input_path / "imagesTr"
+    if images_tr.exists():
+        for ct_file in images_tr.glob("amos_*.nii.gz"):
+            files.append(ct_file)
+            print(f"Found: {ct_file.name}")
+    else:
+        # Fallback: look for CT scans in subdirectories
+        for subdir in input_path.iterdir():
+            if subdir.is_dir() and not subdir.name.endswith('_labels'):
+                # Try both .nii.gz and .nii extensions
+                ct_file = subdir / f"{subdir.name}.nii.gz"
+                if not ct_file.exists():
+                    ct_file = subdir / f"{subdir.name}.nii"
+                print(f"Checking: {ct_file} - exists: {ct_file.exists()}")
+                if ct_file.exists():
+                    files.append(ct_file)
+    
+    files = sorted(files)
+    print(f"Found {len(files)} files to process")
     if args.limit:
         files = files[:args.limit]
     

@@ -1,36 +1,117 @@
 # Python
-__pycache__/
-*.py[cod]
-*.so
-
-# Virtual envs
 .venv/
-venv/
-
-# Editor/OS
-.DS_Store
-
-# Build and dist
+.c2c_env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
 build/
 dist/
-*.egg-info/
-.pytest_cache/
-.mypy_cache/
 
-# App bundles and archives
-L3 Analyzer.app/
-_archive_all_copies/
-
-# Debug outputs
-DEBUG_OUT/
-_debug_out/
-_debug_out_FORCE/
-
-# Models and large artifacts (optional)
-*.onnx
+# OS / Editor
+.DS_Store
+.vscode/runpod.settings.json
 
 # Logs
 *.log
+run_gui.log
+auto_train.log
+auto_train_checkpoints.log
+monitor.log
+merge_output.log
+run.log
+last_run.log
+app_run.log
+run_parallel_custom*.log
+run_ts_batch_*.log
+teacher_test_output.log
+training_monitor*.jsonl
+compile_errors.txt
+lint_report.txt
+
+# Tools / wheels
+tools/wheels/
+tools/rclone/
+
+# Training / output / artefakt klasörleri
+logs/
+qa_out/
+out_eval/
+notebooks/outputs/
+azure_logs_step1/
+azure_logs_step1_latest/
+azure_teacher_output/
+azure_upload_test/
+batch_test_results/
+batch_vfa_test/
+careful_farm_download/
+comp2comp_azure_test/
+comp2comp_enhanced_results/
+comp2comp_integration_test*/
+comp2comp_job_logs*/
+comp2comp_local/
+comp2comp_test_input/
+comp2comp_test_output/
+dicomnet_batch_results/
+dicomnet_full_analysis/
+dicomnet_improved_test/
+dicomnet_test_results*/
+görüntüler_batch_results/
+görüntüler_improved_test/
+görüntüler_test/
+gray_spade_outputs/
+inference_results_*/
+job_logs*/
+job_outputs/
+run_mt_10cases_10ep/
+run_mt_mini_nifti/
+step1_output_download/
+step1_outputs/
+step1_outputs_check/
+teacher_labels_dummy/
+test_abdominal_muscles/
+test_comp2comp_output/
+test_model_output/
+test_normal_mode/
+test_output*/
+test_output_h*/
+test_vfa_only/
+training_plots/
+DEBUG_OUT/
+_debug_out_FORCE/
+
+# Geçici / output dosyaları
+debug_overlay.png
+fascia_test.png
+final_overlay.png
+hybrid_vfa_overlay.png
+new_fascia_overlay.png
+original_model_vfa.png
+test_local.nii.gz
+status_snapshot_*.txt
+training_monitor.jsonl
+
+# Backup dosyaları
+*.bak
+*.bak2
+*.bak_*
+*.save
+*.save.*
+desktop_project.symlink_bak/
+
+# Large 3rd party
+thirdparty/
+.azureml/
+.amlignore
+
+# ML checkpoints & datasets
+psoas_ml/ckpts/
+psoas_ml/data/
+psoas_ml/outs/
+
+# Data
 data/
-data_prepped/
-checkpoints/
+
+# Local environment
+.env

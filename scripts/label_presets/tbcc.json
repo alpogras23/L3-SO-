@@ -1,0 +1,30 @@
+{
+  "name": "TBCC-like default",
+  "note": "Bu bir örnek preset'tir. ID'leri veri setinizin gerçek etiketlerine göre güncelleyin.",
+  "c2c": {
+    "l3_id": 55,
+    "psoas_ids": [
+      55,
+      56
+    ],
+    "vat_id": 100,
+    "sat_id": 101
+  },
+  "gt": {
+    "psoas_ids": [
+      55,
+      56
+    ]
+  },
+  "ts": {
+    "psoas_ids": [
+      55,
+      56
+    ]
+  },
+  "weights": {
+    "w_gt": 1.0,
+    "w_ts": 0.3,
+    "w_c2c": 0.3
+  }
+}

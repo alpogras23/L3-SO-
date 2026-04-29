@@ -1,0 +1,13 @@
+$schema: https://azuremlschemas.azureedge.net/latest/workspace.schema.json
+name: <insert name here>
+location: <insert region here>
+display_name: john-workspace
+description: A workspace for testing enterprise readiness features
+tags:
+  purpose: testing
+  team: ws-management
+az ml compute delete \
+  --name $OLD_CLUSTER_NAME \
+  --resource-group $RG_NAME \
+  --workspace-name $WS_NAME \
+  --yes || echo "Önceki cluster zaten yok, devam ediyorum..."

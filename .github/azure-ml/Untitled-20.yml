@@ -1,0 +1,8 @@
+$schema: https://azuremlschemas.azureedge.net/latest/model.schema.json
+# enter name for your model
+name: <name-for-model>
+# To register a model, specify the path for the saved model
+path: <path-to-your-model>
+
+type: custom_model
+  

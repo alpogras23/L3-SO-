@@ -1,0 +1,225 @@
+$schema: https://azureml.schemas.microsoft.com/V2/pipeline.schema.json
+type: pipeline
+
+display_name: L3 VFA/PMA Analysis with DL Training
+description: AMOS22 VFA/PMA batch processing + U-Net segmentation training on GPU
+tags:
+  project: L3_SO_Analysis
+  type: medical_imaging
+  gpu_accelerated: true
+
+# Input/Output datasets
+inputs:
+  amos22_dataset:
+    type: uri_folder
+    description: AMOS22 CT NIfTI files
+  ts_segmentations:
+    type: uri_folder
+    description: TotalSegmentator abdominal_muscles masks
+  
+outputs:
+  vfa_pma_results:
+    type: uri_folder
+    description: VFA/PMA analysis results (JSON + PNG overlays)
+  trained_model:
+    type: uri_file
+    description: Trained U-Net model checkpoint
+
+# Settings
+settings:
+  default_compute: azureml:l3-gpu-cluster
+  default_datastore: workspaceblobstore
+
+jobs:
+  # Job 1: VFA/PMA Batch Processing (Rule-based)
+  process_vfa_pma:
+    type: command
+    display_name: Process VFA/PMA (Rule-based)
+    description: Calculate L3-level VFA and PMA for all AMOS22 cases
+    
+    compute: azureml:l3-gpu-cluster
+    
+    inputs:
+      input_data: ${{parent.inputs.amos22_dataset}}
+      ts_masks: ${{parent.inputs.ts_segmentations}}
+    
+    outputs:
+      vfa_pma_output:
+        type: uri_folder
+        mode: rw_mount
+    
+    environment:
+      image: mcr.microsoft.com/azureml/openmpi4.1.0-cuda11.2-cudnn8-runtime:latest
+      conda_file: environment.yml
+    
+    command: >-
+      python -u run_l3_vfa_pma.py
+      --input_data ${{inputs.input_data}}
+      --output_dir ${{outputs.vfa_pma_output}}
+      --use_dl False
+      --blend_alpha 0.0
+    
+    code: .
+    
+    timeout: 3600
+    
+    resources:
+      instance_count: 1
+      instance_type: Standard_NC4as_T4_v3
+  
+  # Job 2: Prepare Training Data from TS masks
+  prepare_training_data:
+    type: command
+    display_name: Prepare DL Training Dataset
+    description: Extract L3 slices and create 3-channel training data
+    
+    depends_on: process_vfa_pma
+    
+    compute: azureml:l3-gpu-cluster
+    
+    inputs:
+      amos_data: ${{parent.inputs.amos22_dataset}}
+      ts_data: ${{parent.inputs.ts_segmentations}}
+    
+    outputs:
+      training_data:
+        type: uri_folder
+        mode: rw_mount
+    
+    environment:
+      image: mcr.microsoft.com/azureml/openmpi4.1.0-cuda11.2-cudnn8-runtime:latest
+      conda_file: environment.yml
+    
+    command: >-
+      python -u prepare_training_data.py
+      --amos_root ${{inputs.amos_data}}
+      --ts_root ${{inputs.ts_data}}
+      --output_dir ${{outputs.training_data}}
+      --max_cases 50
+    
+    code: .
+    
+    timeout: 1800
+    
+    resources:
+      instance_count: 1
+      instance_type: Standard_NC4as_T4_v3
+  
+  # Job 3: Train U-Net Model
+  train_unet:
+    type: command
+    display_name: Train U-Net Segmentation Model
+    description: Train MONAI U-Net on prepared 3-channel training data (60 epochs)
+    
+    depends_on: prepare_training_data
+    
+    compute: azureml:l3-gpu-cluster
+    
+    inputs:
+      train_data: ${{jobs.prepare_training_data.outputs.training_data}}
+    
+    outputs:
+      model_output:
+        type: uri_folder
+        mode: rw_mount
+    
+    environment:
+      image: mcr.microsoft.com/azureml/openmpi4.1.0-cuda11.2-cudnn8-runtime:latest
+      conda_file: environment.yml
+    
+    command: >-
+      python -u train_unet_model.py
+      --train_data ${{inputs.train_data}}
+      --output_dir ${{outputs.model_output}}
+      --epochs 60
+      --batch_size 8
+      --learning_rate 1e-4
+    
+    code: .
+    
+    timeout: 7200
+    
+    resources:
+      instance_count: 1
+      instance_type: Standard_NC4as_T4_v3
+  
+  # Job 4: VFA/PMA with Trained DL Model (Hybrid)
+  process_vfa_pma_hybrid:
+    type: command
+    display_name: Process VFA/PMA with DL Model (Hybrid)
+    description: Re-process VFA/PMA using trained DL model with rule-based blend
+    
+    depends_on: train_unet
+    
+    compute: azureml:l3-gpu-cluster
+    
+    inputs:
+      input_data: ${{parent.inputs.amos22_dataset}}
+      ts_masks: ${{parent.inputs.ts_segmentations}}
+      trained_model: ${{jobs.train_unet.outputs.model_output}}
+    
+    outputs:
+      hybrid_results:
+        type: uri_folder
+        mode: rw_mount
+    
+    environment:
+      image: mcr.microsoft.com/azureml/openmpi4.1.0-cuda11.2-cudnn8-runtime:latest
+      conda_file: environment.yml
+    
+    command: >-
+      python -u run_l3_vfa_pma.py
+      --input_data ${{inputs.input_data}}
+      --output_dir ${{outputs.hybrid_results}}
+      --use_dl True
+      --model_path ${{inputs.trained_model}}/best_unet.pt
+      --blend_alpha 0.5
+    
+    code: .
+    
+    timeout: 3600
+    
+    resources:
+      instance_count: 1
+      instance_type: Standard_NC4as_T4_v3
+  
+  # Job 5: Generate Final Report
+  generate_report:
+    type: command
+    display_name: Generate Analysis Report
+    description: Compare rule-based vs hybrid results and generate summary report
+    
+    depends_on:
+      - process_vfa_pma
+      - process_vfa_pma_hybrid
+    
+    compute: azureml:l3-gpu-cluster
+    
+    inputs:
+      rule_based_results: ${{jobs.process_vfa_pma.outputs.vfa_pma_output}}
+      hybrid_results: ${{jobs.process_vfa_pma_hybrid.outputs.hybrid_results}}
+      trained_model_dir: ${{jobs.train_unet.outputs.model_output}}
+    
+    outputs:
+      final_report:
+        type: uri_folder
+        mode: rw_mount
+    
+    environment:
+      image: mcr.microsoft.com/azureml/openmpi4.1.0-cuda11.2-cudnn8-runtime:latest
+      conda_file: environment.yml
+    
+    command: >-
+      python -u generate_report.py
+      --rule_based ${{inputs.rule_based_results}}
+      --hybrid ${{inputs.hybrid_results}}
+      --model_dir ${{inputs.trained_model_dir}}
+      --output_dir ${{outputs.final_report}}
+    
+    code: .
+    
+    timeout: 1200
+    
+    resources:
+      instance_count: 1
+      instance_type: Standard_NC4as_T4_v3

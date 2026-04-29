@@ -2,46 +2,22 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python Hata Ayıklayıcısı: Geçerli Dosya",
-      "type": "debugpy",
+      "name": "Run GUI (External Terminal via Bootstrap)",
+      "type": "python",
       "request": "launch",
-      "program": "${file}",
-      "console": "integratedTerminal"
-    },
-    {
-      "name": "Run GUI (mini)",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/l3_vfa_pma_gui.py",
+      "program": "${workspaceFolder}/run_gui_bootstrap.py",
+      "console": "externalTerminal",
       "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
       "justMyCode": false,
-      "env": {
-        "PYTHONFAULTHANDLER": "1"
-      }
+      "python": "${workspaceFolder}/.venv/bin/python"
     },
     {
-      "name": "Run current file",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${file}",
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
+      "name": "Attach GUI (debugpy:5678)",
+      "type": "python",
+      "request": "attach",
+      "connect": { "host": "localhost", "port": 5678 },
       "justMyCode": false
-    },
-    {
-      "name": "Quick Test (sample DICOM)",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/quick_test.py",
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "justMyCode": false,
-      "args": [
-        "${workspaceFolder}/334379490.dcm",
-        "M",
-        "1.70"
-      ]
     }
   ]
 }

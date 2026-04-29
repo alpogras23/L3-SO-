@@ -1,0 +1,39 @@
+$schema: https://azuremlschemas.blob.core.windows.net/latest/commandJob.schema.json
+
+type: command
+display_name: "Step 3: VFA/PMA Inference (HU-Calibrated)"
+description: "Inference pipeline for accurate VFA/PMA calculation using HU thresholds"
+
+# Package only the azure-ml folder; helper modules are vendored below.
+code: .
+
+compute: azureml:l3-cpu-cluster
+
+environment:
+  image: mcr.microsoft.com/azureml/base:latest
+
+command: >
+  set -e &&
+  echo "Starting job..." &&
+  pip install --upgrade pip &&
+  echo "Pip upgraded" &&
+  pip install torch>=2.0.0 monai>=1.3.0 nibabel>=5.0.0 scikit-image>=0.20.0 tqdm>=4.65.0 PyYAML>=6.0 numpy scipy pandas opencv-python-headless &&
+  echo "Dependencies installed" &&
+  echo "Running inference script..." &&
+  python step3_inference_vfa_pma.py --amos-data ${{inputs.amos_data}} --checkpoint ${{inputs.checkpoint}} --output-dir ${{outputs.inference_results}} --device cpu --batch-size 8 --pixel-spacing-mm 0.977
+
+inputs:
+  amos_data:
+    type: uri_folder
+    path: azureml://datastores/amos22imagestr/paths/
+    mode: ro_mount
+  
+  checkpoint:
+    type: uri_file
+    path: azureml://datastores/workspaceblobstore/paths/trained_models/loving_pear_6052l5ddgg/best_model.pth
+    mode: ro_mount
+
+outputs:
+  inference_results:
+    type: uri_folder
+    mode: rw_mount

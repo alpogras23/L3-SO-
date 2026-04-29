@@ -1,0 +1,20 @@
+name: l3-vfa-pma-env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - numpy
+  - scipy
+  - pandas
+  - opencv
+  - pip:
+    - torch>=2.0.0
+    - monai>=1.3.0
+    - nibabel>=5.0.0
+    - SimpleITK>=2.2.0
+    - scikit-image>=0.20.0
+    - tqdm>=4.65.0
+    - PyYAML>=6.0
+    # - TotalSegmentator>=2.0.0  # Removed to avoid installation issues

@@ -1,0 +1,8 @@
+$schema: https://azuremlschemas.azureedge.net/latest/azureBlob.schema.json
+name: amos22storage
+type: azure_blob
+description: AMOS22 dataset storage
+account_name: l3storage001
+container_name: amos22-data
+credentials:
+  account_key: "<REDACTED_USE_ENV_AZURE_STORAGE_KEY>"
